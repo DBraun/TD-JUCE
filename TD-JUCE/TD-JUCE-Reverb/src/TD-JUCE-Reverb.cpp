@@ -46,6 +46,7 @@ extern "C"
 
 		// The opLabel is the text that will show up in the OP Create Dialog
 		info->customOPInfo.opLabel->setString("JUCE Reverb");
+		info->customOPInfo.opIcon->setString("JRC"); // JUCE Reverb CHOP
 
 		// Information about the author of this OP
 		info->customOPInfo.authorName->setString("David Braun");

@@ -115,10 +115,10 @@ set(ALL_FILES
 ################################################################################
 # Target
 ################################################################################
-add_library(TD-JUCE-Reverb SHARED ${ALL_FILES})
+add_library(${PROJECT_NAME} SHARED ${ALL_FILES})
 
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")
-set(ROOT_NAMESPACE TD-JUCE-Reverb)
+set(ROOT_NAMESPACE ${PROJECT_NAME})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     VS_GLOBAL_KEYWORD "Win32Proj"
@@ -178,9 +178,7 @@ if(MSVC)
     )
 endif()
 
-TARGET_LINK_LIBRARIES(${PROJECT_NAME}
-    debug "${CMAKE_SOURCE_DIR}/build/Debug/TD-JUCE.lib"
-    optimized "${CMAKE_SOURCE_DIR}/build/Release/TD-JUCE.lib")
+target_link_libraries(${PROJECT_NAME} TD-JUCE)
 
 # The following step will create a post-build event that copies the custom DLL to
 # the Documents/Derivative/Plugins folder.
