@@ -32,8 +32,9 @@ If you use this code you must obey the [JUCE 6.0 License](https://github.com/juc
 
 ## Roadmap
 
-* Fix the CMake build order issue.
-* Make it possible to build in debug mode.
-* Use this repo to build simultaneously multiple TouchDesigner DLLs: VST effect, VST instrument etc.
-* Mac OSX support.
-* Add continuous integration testing.
+* Fix the CMake build order issue
+* Make it possible to build in debug mode
+* Add new plugin for VST effect
+* Add new plugin for VST instrument
+* Mac OSX support
+* Add continuous integration testing
