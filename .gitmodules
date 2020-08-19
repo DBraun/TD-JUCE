@@ -1,0 +1,6 @@
+[submodule "JUCE_5"]
+	path = thirdparty/JUCE_5
+	url = https://github.com/juce-framework/JUCE.git
+[submodule "JUCE_6"]
+	path = thirdparty/JUCE_6
+	url = https://github.com/juce-framework/JUCE.git
