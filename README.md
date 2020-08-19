@@ -1,8 +1,7 @@
 # TD-JUCE
-JUCE audio in TouchDesigner CHOPs.
+This repo demonstrates building [JUCE](http://juce.com/) into a dynamic linked library `TD-JUCE.dll`, currently about 3.2 MB. Users can make their own TouchDesigner JUCE DLLs by linking against this library, and these plugins are likely to be even lighter. For example, `TD-JUCE-Reverb.dll` is only 103 KB. Going forward, this repo will grow by containing more plugin examples.
 
 Currently implemented:
-
 * Reverb
 
 ## Installation
@@ -21,7 +20,7 @@ cd build
 cmake ..
 ```
 
-Then open `build/TD-JUCE.sln` and build in Release (Debug is broken). It will fail the first time but succeed the second time (I need to fix the build dependencies...). Press `F5` and TouchDesigner should open.
+Then open `build/TD-JUCE.sln` and build twice in Release (Debug is broken). It will fail the first time but succeed the second time (I need to fix the build dependencies...). Press `F5` and TouchDesigner should open.
 
 ### OSX
 
