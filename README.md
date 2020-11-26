@@ -9,14 +9,6 @@ Currently implemented:
 
 ### All Platforms
 
-You need to modify the JUCE framework in a slight way. In this repo, go to `thirdparty/JUCE_6/modules/juce_dsp/frequency/juce_Convolution.cpp` and change [line 75](https://github.com/juce-framework/JUCE/blob/a30f7357863a7d480a771e069abf56909cdf0e13/modules/juce_dsp/frequency/juce_Convolution.cpp#L75) from
-
-`class BackgroundMessageQueue  : private Thread`
-
-to
-
-`class BackgroundMessageQueue  : public Thread`
-
 ### Windows
 
 Install [CMake](https://cmake.org/download/) and make sure it's in your system path. Then in this repo, open a cmd window and do the following:
@@ -27,7 +19,7 @@ cd build
 cmake ..
 ```
 
-Open `build/TD-JUCE.sln` and build in Release (Debug is broken). Press `F5` and TouchDesigner should open. This repo's `Plugins` folder should contain a newly compiled `TD-JUCE.dll` and other DLLs such as `TD-JUCE-Reverb.dll`.
+Open `build/TD-JUCE.sln` and build in Release (Debug is broken). Then press `F5` and TouchDesigner should open. This repo's `Plugins` folder should contain a newly compiled `TD-JUCE.dll` and other DLLs such as `TD-JUCE-Reverb.dll`.
 
 ### OSX
 
