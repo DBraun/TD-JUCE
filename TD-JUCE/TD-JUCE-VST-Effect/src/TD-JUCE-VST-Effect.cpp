@@ -285,16 +285,16 @@ TDVSTEffect::execute(CHOP_Output* output,
 
 	if (!checkPlugin(inputs->getParFilePath("Vstfile"))) return;
 
-	if (myDoLoadPreset) {
-		myDoLoadPreset = !loadPreset(inputs->getParFilePath("Fxpfile"));
-	}
-
 	if (vstParameterCHOP) {
 		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
 		{
 			myPlugin->setParameter(i, vstParameterCHOP->getChannelData(i)[0]);
 			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 		}
+	}
+
+	if (myDoLoadPreset) {
+		myDoLoadPreset = !loadPreset(inputs->getParFilePath("Fxpfile"));
 	}
 
 	myBuffer->setDataToReferTo((float**) inputCHOP->channelData, inputCHOP->numChannels, inputCHOP->numSamples);
