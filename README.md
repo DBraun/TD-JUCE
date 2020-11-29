@@ -35,7 +35,6 @@ TouchDesigner isn't on Linux ;)
 ## Roadmap
 
 * Make it possible to build in debug mode
-* Add new plugin for VST effect
 * Add new plugin for VST instrument
 * Mac OSX support
 * Add continuous integration testing
