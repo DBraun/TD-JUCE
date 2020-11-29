@@ -96,6 +96,6 @@ private:
 
 	void saveParameterInfo();
 
-	std::unordered_map<int, std::string> myParameterMap;
+	std::unordered_map<int, std::pair<std::string, float>> myParameterMap;
 
 };

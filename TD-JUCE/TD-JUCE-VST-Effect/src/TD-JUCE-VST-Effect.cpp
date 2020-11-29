@@ -189,7 +189,7 @@ TDVSTEffect::saveParameterInfo() {
 		//std::string currentText = processorParams[i]->getText(processorParams[i]->getValue(), maximumStringLength).toStdString();
 		//std::string label = processorParams[i]->getLabel().toStdString();
 
-		myParameterMap[i] = theName;
+		myParameterMap[i] = std::make_pair(theName, myPlugin->getParameter(i));
 
 		//py::dict myDictionary;
 		//myDictionary["index"] = i;
@@ -293,6 +293,7 @@ TDVSTEffect::execute(CHOP_Output* output,
 		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
 		{
 			myPlugin->setParameter(i, vstParameterCHOP->getChannelData(i)[0]);
+			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 		}
 	}
 
@@ -354,8 +355,12 @@ TDVSTEffect::getInfoDATEntries(int32_t index,
 	OP_InfoDATEntries* entries,
 	void* reserved1)
 {
-	entries->values[0]->setString(std::to_string(index).c_str());
-	entries->values[1]->setString(myParameterMap[index].c_str());
+	char buffer[64];
+
+	int ret = snprintf(buffer, sizeof buffer, "%f", myParameterMap[index].second);
+
+	entries->values[0]->setString(myParameterMap[index].first.c_str());
+	entries->values[1]->setString(buffer);
 }
 
 void
