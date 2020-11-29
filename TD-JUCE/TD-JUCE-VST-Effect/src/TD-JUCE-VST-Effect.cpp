@@ -47,11 +47,8 @@ extern "C"
 		info->customOPInfo.authorName->setString("David Braun");
 		info->customOPInfo.authorEmail->setString("github.com/dbraun");
 
-		// This CHOP can work with 0 inputs
 		info->customOPInfo.minInputs = 1;
-
-		// It can accept up to 1 input though, which changes it's behavior
-		info->customOPInfo.maxInputs = 1;
+		info->customOPInfo.maxInputs = 2;
 	}
 
 	DLLEXPORT
@@ -81,7 +78,7 @@ TDVSTEffect::TDVSTEffect(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRa
 	myExecuteCount = 0;
 	myOffset = 0.0;
 
-	myBuffer = new juce::AudioBuffer<float>(2, 2048);
+	myBuffer = new juce::AudioBuffer<float>(2, 2048);  // 2 for stereo
 }
 
 TDVSTEffect::~TDVSTEffect()
@@ -90,6 +87,10 @@ TDVSTEffect::~TDVSTEffect()
 	{
 		myPlugin->releaseResources();
 		myPlugin.release();
+	}
+
+	if (myBuffer) {
+		delete myBuffer;
 	}
 }
 
@@ -140,6 +141,8 @@ TDVSTEffect::getChannelName(int32_t index, OP_String* name, const OP_Inputs* inp
 	name->setString("chan1");
 }
 
+
+// Returns true if the preset was loaded successfully. False otherwise.
 bool
 TDVSTEffect::loadPreset(const std::string& path)
 {
@@ -247,7 +250,7 @@ TDVSTEffect::checkPlugin(const char* pluginFilepath) {
 
 		if (myPlugin != nullptr)
 		{
-			std::cout << "TDVSTEffect::loadPlugin success!" << std::endl;
+			//std::cout << "TDVSTEffect::loadPlugin success!" << std::endl;
 
 			saveParameterInfo();
 			myPlugin->prepareToPlay(mySampleRate, mySamplesPerBlock);
@@ -289,12 +292,18 @@ TDVSTEffect::execute(CHOP_Output* output,
 		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
 		{
 			myPlugin->setParameter(i, vstParameterCHOP->getChannelData(i)[0]);
-			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 		}
 	}
 
 	if (myDoLoadPreset) {
 		myDoLoadPreset = !loadPreset(inputs->getParFilePath("Fxpfile"));
+	}
+
+	if (vstParameterCHOP) {
+		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
+		{
+			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
+		}
 	}
 
 	myBuffer->setDataToReferTo((float**) inputCHOP->channelData, inputCHOP->numChannels, inputCHOP->numSamples);
@@ -355,12 +364,17 @@ TDVSTEffect::getInfoDATEntries(int32_t index,
 	OP_InfoDATEntries* entries,
 	void* reserved1)
 {
-	char buffer[64];
-
-	int ret = snprintf(buffer, sizeof buffer, "%f", myParameterMap[index].second);
+	char tempBuffer[64];
 
 	entries->values[0]->setString(myParameterMap[index].first.c_str());
-	entries->values[1]->setString(buffer);
+
+	// Set the value for the second column
+#ifdef _WIN32
+	sprintf_s(tempBuffer, "%f", myParameterMap[index].second);
+#else // macOS
+	snprintf(tempBuffer, sizeof(tempBuffer), "%f", myParameterMap[index].second);
+#endif
+	entries->values[1]->setString(tempBuffer);
 }
 
 void
@@ -379,7 +393,7 @@ TDVSTEffect::setupParameters(OP_ParameterManager* manager, void* reserved1)
 		assert(res == OP_ParAppendResult::Success);
 	}
 
-	// VST File Path
+	// FXP File Path
 	{
 		OP_StringParameter sp;
 

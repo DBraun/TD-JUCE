@@ -98,4 +98,5 @@ private:
 
 	std::unordered_map<int, std::pair<std::string, float>> myParameterMap;
 
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TDVSTEffect)
 };

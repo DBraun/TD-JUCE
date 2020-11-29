@@ -49,10 +49,7 @@ extern "C"
 		info->customOPInfo.authorName->setString("David Braun");
 		info->customOPInfo.authorEmail->setString("github.com/dbraun");
 
-		// This CHOP can work with 0 inputs
 		info->customOPInfo.minInputs = 1;
-
-		// It can accept up to 1 input though, which changes it's behavior
 		info->customOPInfo.maxInputs = 1;
 	}
 
