@@ -4,8 +4,11 @@ This repo builds [JUCE](http://juce.com/) into a dynamic linked library `TD-JUCE
 
 Currently implemented:
 * [Reverb](https://docs.juce.com/master/classdsp_1_1Reverb.html)
+* [VST Effect](https://docs.juce.com/master/classAudioPluginInstance.html)
 
 ## Installation
+
+Clone this repo with git. It will not work if you download it as a zip.
 
 ### All Platforms
 
@@ -19,7 +22,7 @@ cd build
 cmake ..
 ```
 
-Open `build/TD-JUCE.sln` and build in Release (Debug is broken). Then press `F5` and TouchDesigner should open. This repo's `Plugins` folder should contain a newly compiled `TD-JUCE.dll` and other DLLs such as `TD-JUCE-Reverb.dll`.
+Open `build/TD-JUCE.sln` and build in Release (Debug is broken). Then press `F5` and TouchDesigner should open. This repo's `Plugins` folder should contain a newly compiled `TD-JUCE.dll` and other DLLs such as `TD-JUCE-Reverb.dll` and `TD-JUCE-VST-Effect`.
 
 ### OSX
 

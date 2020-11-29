@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13.0 FATAL_ERROR)
 
 set(CMAKE_SYSTEM_VERSION 10.0.10586.0 CACHE STRING "" FORCE)
 
-project(TD-JUCE-Reverb VERSION 0.0.1)
+project(TD-JUCE-VST-Effect VERSION 0.0.1)
 
 ################################################################################
 # Set target arch type if empty. Visual studio solution generator provides it.
@@ -81,7 +81,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 ################################################################################
 # Source groups
 ################################################################################
-project(TD-JUCE-Reverb VERSION 0.0.1)
+project(TD-JUCE-VST-Effect VERSION 0.0.1)
 
 set(TOUCHDESIGNER_INCLUDE ${PROJECT_SOURCE_DIR}/../../thirdparty/TouchDesigner/)
 
@@ -95,14 +95,14 @@ set(Headers
     "${TOUCHDESIGNER_INCLUDE}/CHOP_CPlusPlusBase.h"
     "${TOUCHDESIGNER_INCLUDE}/CPlusPlus_Common.h"
     "${TOUCHDESIGNER_INCLUDE}/GL_Extensions.h"
-    "src/TD-JUCE-Reverb.h"
+    "src/TD-JUCE-VST-Effect.h"
     "../../JuceLibraryCode/AppConfig.h"
     "../../JuceLibraryCode/JuceHeader.h"
 )
 source_group("Headers" FILES ${Headers})
 
 set(Sources
-    "src/TD-JUCE-Reverb.cpp"
+    "src/TD-JUCE-VST-Effect.cpp"
 )
 
 source_group("Sources" FILES ${Sources})
@@ -186,6 +186,6 @@ if (MSVC)
   add_custom_command(TARGET ${PROJECT_NAME}
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                     "$<TARGET_FILE:TD-JUCE-Reverb>"
+                     "$<TARGET_FILE:TD-JUCE-VST-Effect>"
                      ${CMAKE_SOURCE_DIR}/Plugins)
 endif (MSVC)

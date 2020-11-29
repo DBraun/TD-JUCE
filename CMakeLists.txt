@@ -96,8 +96,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 ################################################################################
 project(TD-JUCE VERSION 0.0.1)
 
-set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/JUCE_6/modules" CACHE PATH
-    "Location of the JUCE source code 'modules' directory")
+set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/JUCE_6/modules")
 
 message(STATUS "Using JUCE module path: ${JUCE_MODULES_PATH}")
 
@@ -108,18 +107,23 @@ else ()
   set(SOURCE_EXTENSION "cpp")
 endif()
 
-# https://forum.juce.com/t/juce-api-is-not-set-to---declspec-dllexport-when-creating-dynamic-library-project/22962/2
-add_compile_definitions(JUCE_DLL_BUILD=1)
-
 # List of modules to build
 set(JUCE_MODULES
     juce_audio_basics
+    juce_audio_devices
     juce_audio_formats
+    juce_audio_processors
+    juce_audio_utils
     juce_core
+    juce_cryptography
     juce_data_structures
     juce_dsp
-    juce_events)
-
+    juce_events
+    juce_graphics
+    juce_gui_basics
+    juce_gui_extra
+    juce_opengl
+    juce_video)
 # Convert to list of source files (extension based on OS)
 foreach(j_module IN LISTS JUCE_MODULES)
     list(APPEND JUCE_SOURCES
@@ -131,10 +135,21 @@ list(APPEND JUCE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/JuceHeader
 
 add_library(TD-JUCE SHARED ${JUCE_SOURCES} )
 
+target_compile_definitions(TD-JUCE
+    PUBLIC
+        JUCE_STANDALONE_APPLICATION=1
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+    PRIVATE
+        JUCE_DLL_BUILD=1
+)
+
 # Include header directories
 target_include_directories(TD-JUCE PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode>
     $<BUILD_INTERFACE:${JUCE_MODULES_PATH}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/JUCE_6/modules/juce_audio_processors/format_types/VST3_SDK>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/JUCE_5/modules/juce_audio_processors/format_types/VST3_SDK>
     $<INSTALL_INTERFACE:TD-JUCE> )
 
 # Install library
