@@ -12,13 +12,14 @@
 * prior written permission from Derivative.
 */
 
-#include "TD-JUCE-VST-Effect.h"
+#include "TD-JUCE-VST.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <cmath>
 #include <assert.h>
 #include <algorithm>
+#include <filesystem>
 
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
@@ -37,18 +38,18 @@ extern "C"
 		// The opType is the unique name for this CHOP. It must start with a 
 		// capital A-Z character, and all the following characters must lower case
 		// or numbers (a-z, 0-9)
-		info->customOPInfo.opType->setString("Vsteffect");
+		info->customOPInfo.opType->setString("Vst");
 
 		// The opLabel is the text that will show up in the OP Create Dialog
-		info->customOPInfo.opLabel->setString("VST Effect");
+		info->customOPInfo.opLabel->setString("VST");
 		info->customOPInfo.opIcon->setString("VST");
 
 		// Information about the author of this OP
 		info->customOPInfo.authorName->setString("David Braun");
 		info->customOPInfo.authorEmail->setString("github.com/dbraun");
 
-		info->customOPInfo.minInputs = 1;
-		info->customOPInfo.maxInputs = 2;
+		info->customOPInfo.minInputs = 0;
+		info->customOPInfo.maxInputs = 3;  // input audio, parameters, and MIDI notes
 	}
 
 	DLLEXPORT
@@ -57,7 +58,7 @@ extern "C"
 	{
 		// Return a new instance of your class every time this is called.
 		// It will be called once per CHOP that is using the .dll
-		return new TDVSTEffect(info);
+		return new TDVST(info);
 	}
 
 	DLLEXPORT
@@ -67,21 +68,25 @@ extern "C"
 		// Delete the instance here, this will be called when
 		// Touch is shutting down, when the CHOP using that instance is deleted, or
 		// if the CHOP loads a different DLL
-		delete (TDVSTEffect*)instance;
+		delete (TDVST*)instance;
 	}
 
 };
 
 
-TDVSTEffect::TDVSTEffect(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
+TDVST::TDVST(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
 {
 	myExecuteCount = 0;
-	myOffset = 0.0;
 
 	myBuffer = new juce::AudioBuffer<float>(2, 2048);  // 2 for stereo
+
+	for (size_t i = 0; i < 128; i++)
+	{
+		myActiveNotes[i] = 0;
+	}
 }
 
-TDVSTEffect::~TDVSTEffect()
+TDVST::~TDVST()
 {
 	if (myPlugin)
 	{
@@ -95,7 +100,7 @@ TDVSTEffect::~TDVSTEffect()
 }
 
 void
-TDVSTEffect::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, void* reserved1)
+TDVST::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, void* reserved1)
 {
 	// This will cause the node to cook every frame
 	ginfo->cookEveryFrameIfAsked = true;
@@ -110,10 +115,20 @@ TDVSTEffect::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, vo
 }
 
 bool
-TDVSTEffect::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reserved1)
+TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reserved1)
 {
 
-	double newSampleRate = inputs->getInputCHOP(0)->sampleRate;
+	auto inputAudioCHOP = inputs->getInputCHOP(0);
+
+	double newSampleRate;
+
+	if (inputAudioCHOP) {
+		newSampleRate = inputAudioCHOP->sampleRate;
+	}
+	else {
+		newSampleRate = inputs->getParDouble("Samplerate");
+	}
+
 	double newRate = inputs->getTimeInfo()->rate;
 
 	if (newSampleRate != mySampleRate || myCookRate != newRate) {
@@ -132,11 +147,24 @@ TDVSTEffect::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void*
 		myCookRate = newRate;
 	}
 
-	return false;
+	info->numChannels = 2;
+
+	// return false;
+
+	if (inputAudioCHOP) {
+		return false;
+	}
+	else {
+		info->numSamples = mySampleRate* inputs->getTimeInfo()->deltaMS / 1000;
+		info->numChannels = 2;
+		info->sampleRate = mySampleRate;
+
+		return true;
+	}
 }
 
 void
-TDVSTEffect::getChannelName(int32_t index, OP_String* name, const OP_Inputs* inputs, void* reserved1)
+TDVST::getChannelName(int32_t index, OP_String* name, const OP_Inputs* inputs, void* reserved1)
 {
 	name->setString("chan1");
 }
@@ -144,9 +172,13 @@ TDVSTEffect::getChannelName(int32_t index, OP_String* name, const OP_Inputs* inp
 
 // Returns true if the preset was loaded successfully. False otherwise.
 bool
-TDVSTEffect::loadPreset(const std::string& path)
+TDVST::loadPreset(const std::string& path)
 {
 	using namespace juce;
+
+	if (!std::filesystem::exists(path)) {
+		return false;
+	}
 
 	try {
 		MemoryBlock mb;
@@ -168,26 +200,23 @@ TDVSTEffect::loadPreset(const std::string& path)
 		return true;
 	}
 	catch (std::exception& e) {
-		std::cout << "TDVSTEffect::loadPreset " << e.what() << std::endl;
+		std::cout << "TDVST::loadPreset " << e.what() << std::endl;
 		return false;
 	}
 
 }
 
 void
-TDVSTEffect::saveParameterInfo() {
+TDVST::saveParameterInfo() {
 
 	using namespace juce;
 
 	myParameterMap.clear();
 
-	//get the parameters as an AudioProcessorParameter array
-	//const Array<AudioProcessorParameter*>& processorParams = myPlugin->getParameters();
 	for (int i = 0; i < myPlugin->AudioProcessor::getNumParameters(); i++) {
 
 		int maximumStringLength = 64;
 
-		
 		auto theName = myPlugin->getParameterName(i).toStdString();
 		//std::string currentText = processorParams[i]->getText(processorParams[i]->getValue(), maximumStringLength).toStdString();
 		//std::string label = processorParams[i]->getLabel().toStdString();
@@ -207,7 +236,7 @@ TDVSTEffect::saveParameterInfo() {
 }
 
 bool
-TDVSTEffect::checkPlugin(const char* pluginFilepath) {
+TDVST::checkPlugin(const char* pluginFilepath) {
 
 	using namespace juce;
 
@@ -216,6 +245,10 @@ TDVSTEffect::checkPlugin(const char* pluginFilepath) {
 	}
 
 	if (myPluginPath.compare(pluginFilepath) != 0) {
+
+		if (!std::filesystem::exists(pluginFilepath)) {
+			return false;
+		}
 
 		juce::OwnedArray<PluginDescription> pluginDescriptions;
 		KnownPluginList pluginList;
@@ -250,17 +283,21 @@ TDVSTEffect::checkPlugin(const char* pluginFilepath) {
 
 		if (myPlugin != nullptr)
 		{
-			//std::cout << "TDVSTEffect::loadPlugin success!" << std::endl;
+			//std::cout << "TDVST::loadPlugin success!" << std::endl;
 
 			saveParameterInfo();
-			myPlugin->prepareToPlay(mySampleRate, mySamplesPerBlock);
+
+			if (myPlugin) {
+				myPlugin->prepareToPlay(mySampleRate, 2048);
+			}
+
 			myPlugin->setNonRealtime(false);  // todo: allow non-realtime render if TouchDesigner is set to non-realtime?
 
 			myPluginPath = pluginFilepath;
 			return true;
 		}
 
-		std::cout << "TDVSTEffect::loadPlugin error: " << errorMessage.toStdString() << std::endl;
+		std::cout << "TDVST::loadPlugin error: " << errorMessage.toStdString() << std::endl;
 		return false;
 	}
 
@@ -268,66 +305,114 @@ TDVSTEffect::checkPlugin(const char* pluginFilepath) {
 }
 
 void
-TDVSTEffect::execute(CHOP_Output* output,
+TDVST::execute(CHOP_Output* output,
 	const OP_Inputs* inputs,
 	void* reserved)
 {
-
 	using namespace juce;
 
 	myExecuteCount++;
 
-	if (inputs->getNumInputs() == 0)
-	{
-		return;
-	}
+	if (!checkPlugin(inputs->getParFilePath("Vstfile"))) return;
 
 	auto inputCHOP = inputs->getInputCHOP(0);
 
 	auto vstParameterCHOP = inputs->getInputCHOP(1);
 
-	if (!checkPlugin(inputs->getParFilePath("Vstfile"))) return;
-
-	if (vstParameterCHOP) {
-		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
-		{
-			myPlugin->setParameter(i, vstParameterCHOP->getChannelData(i)[0]);
-		}
-	}
+	auto midiCHOP = inputs->getInputCHOP(2);
 
 	if (myDoLoadPreset) {
 		myDoLoadPreset = !loadPreset(inputs->getParFilePath("Fxpfile"));
 	}
 
+	int newSamplesPerBlock = inputs->getParInt("Blocksize");
+
+	if (newSamplesPerBlock != mySamplesPerBlock) {
+
+		myPlugin->prepareToPlay(mySampleRate, newSamplesPerBlock);
+	}
+	mySamplesPerBlock = newSamplesPerBlock;
+	
+	myRenderMidiBuffer.clear();
+
+	// i is the "block index"
+	for (size_t i = 0; i < (output->numSamples / mySamplesPerBlock)+1; i++)
+	{
+
+		if (vstParameterCHOP) {
+			for (size_t chan = 0; chan < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); chan++)
+			{
+				myPlugin->setParameter(chan, vstParameterCHOP->getChannelData(chan)[std::min((int)i*mySamplesPerBlock, (int)vstParameterCHOP->numSamples)]);
+			}
+		}
+
+		if (midiCHOP) {
+
+			int maxSamp = std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples);
+			maxSamp = std::min(maxSamp, midiCHOP->numSamples);
+
+			for (size_t note = 0; note < std::min(128, midiCHOP->numChannels); note++)
+			{
+				for (size_t samp = i * mySamplesPerBlock; samp < maxSamp; samp++)
+				{
+					float velocity = midiCHOP->getChannelData(note)[samp];
+					velocity = std::min(1.f, std::max(0.f, velocity));  // clamp 0 to 1
+					bool isOn = (bool)velocity;
+					if ((bool)velocity != myActiveNotes[note]) {
+
+						juce::MidiMessage myMidiMessage = isOn ? juce::MidiMessage::noteOn(1, note, velocity) : juce::MidiMessage::noteOff(1, note, velocity);
+
+						myRenderMidiBuffer.addEvent(myMidiMessage, samp - i * mySamplesPerBlock);
+						myActiveNotes[note] = isOn;
+
+						//std::cout << "note: " << note << " vel: " << velocity << " samp: " << samp - i * mySamplesPerBlock << std::endl;
+					}
+				}
+			}
+		}
+
+		int bufferSize = std::min(mySamplesPerBlock, (int)(output->numSamples - (i * mySamplesPerBlock)));
+		myPlugin->prepareToPlay(mySampleRate, bufferSize);
+		myBuffer->setSize(2, bufferSize, false, false, false); // todo: dangerous to hard-code stereo output
+		if (inputCHOP) {
+
+			//myBuffer->setDataToReferTo((float**)inputCHOP->channelData, 2, bufferSize);  // todo: dangerous to hard-code stereo input
+			for (size_t chan = 0; chan < 2; chan++)
+			{
+				myBuffer->copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
+			}
+		}
+
+		myPlugin->processBlock(*myBuffer, myRenderMidiBuffer);
+
+		for (int chan = 0; chan < output->numChannels; chan++) {
+			auto chanPtr = myBuffer->getReadPointer(chan);
+			for (int samp = i * mySamplesPerBlock; samp < std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples); samp++)
+			{
+				output->channels[chan][samp] = *chanPtr++;
+			}
+		}
+	}
+
+	// TODO: only write to the map if the user requests it with a toggle custom parameter.
 	if (vstParameterCHOP) {
 		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
 		{
 			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 		}
 	}
-
-	myBuffer->setDataToReferTo((float**) inputCHOP->channelData, inputCHOP->numChannels, inputCHOP->numSamples);
-	myPlugin->processBlock(*myBuffer, myRenderMidiBuffer);
-
-	for (int chan = 0; chan < output->numChannels; chan++) {
-		auto chanPtr = myBuffer->getReadPointer(chan);
-		for (int i = 0; i < output->numSamples; i++)
-		{
-			output->channels[chan][i] = *chanPtr++;
-		}
-	}
 }
 
 int32_t
-TDVSTEffect::getNumInfoCHOPChans(void* reserved1)
+TDVST::getNumInfoCHOPChans(void* reserved1)
 {
 	// We return the number of channel we want to output to any Info CHOP
 	// connected to the CHOP. In this example we are just going to send one channel.
-	return 2;
+	return 1;
 }
 
 void
-TDVSTEffect::getInfoCHOPChan(int32_t index,
+TDVST::getInfoCHOPChan(int32_t index,
 	OP_InfoCHOPChan* chan,
 	void* reserved1)
 {
@@ -339,16 +424,10 @@ TDVSTEffect::getInfoCHOPChan(int32_t index,
 		chan->name->setString("executeCount");
 		chan->value = (float)myExecuteCount;
 	}
-
-	if (index == 1)
-	{
-		chan->name->setString("offset");
-		chan->value = (float)myOffset;
-	}
 }
 
 bool
-TDVSTEffect::getInfoDATSize(OP_InfoDATSize* infoSize, void* reserved1)
+TDVST::getInfoDATSize(OP_InfoDATSize* infoSize, void* reserved1)
 {
 	infoSize->rows = myParameterMap.size();
 	infoSize->cols = 2;
@@ -359,7 +438,7 @@ TDVSTEffect::getInfoDATSize(OP_InfoDATSize* infoSize, void* reserved1)
 }
 
 void
-TDVSTEffect::getInfoDATEntries(int32_t index,
+TDVST::getInfoDATEntries(int32_t index,
 	int32_t nEntries,
 	OP_InfoDATEntries* entries,
 	void* reserved1)
@@ -378,7 +457,7 @@ TDVSTEffect::getInfoDATEntries(int32_t index,
 }
 
 void
-TDVSTEffect::setupParameters(OP_ParameterManager* manager, void* reserved1)
+TDVST::setupParameters(OP_ParameterManager* manager, void* reserved1)
 {
 
 	// VST File Path
@@ -404,22 +483,6 @@ TDVSTEffect::setupParameters(OP_ParameterManager* manager, void* reserved1)
 		OP_ParAppendResult res = manager->appendFile(sp);
 		assert(res == OP_ParAppendResult::Success);
 	}
-
-	//// Width
-	//{
-	//	OP_NumericParameter	np;
-
-	//	np.name = "Width";
-	//	np.label = "Width";
-	//	np.defaultValues[0] = 1.0;
-	//	np.minSliders[0] = 0.;
-	//	np.maxSliders[0] = 1.;
-	//	np.clampMins[0] = true;
-	//	np.clampMaxes[0] = true;
-
-	//	OP_ParAppendResult res = manager->appendFloat(np);
-	//	assert(res == OP_ParAppendResult::Success);
-	//}
 
 	//// Freeze Mode
 	//{
@@ -460,25 +523,63 @@ TDVSTEffect::setupParameters(OP_ParameterManager* manager, void* reserved1)
 		assert(res == OP_ParAppendResult::Success);
 	}
 
-	//// pulse
-	//{
-	//	OP_NumericParameter	np;
+	// Width
+	{
+		OP_NumericParameter	np;
 
-	//	np.name = "Reset";
-	//	np.label = "Reset";
+		np.name = "Samplerate";
+		np.label = "Sample Rate";
+		np.minValues[0] = 1;
+		np.maxValues[0] = 96000;
+		np.minSliders[0] = 1;
+		np.maxSliders[0] = 96000;
+		np.clampMins[0] = true;
+		np.clampMaxes[0] = true;
+		np.defaultValues[0] = 44100;
 
-	//	OP_ParAppendResult res = manager->appendPulse(np);
-	//	assert(res == OP_ParAppendResult::Success);
-	//}
+		OP_ParAppendResult res = manager->appendFloat(np);
+		assert(res == OP_ParAppendResult::Success);
+	}
+
+	// Width
+	{
+		OP_NumericParameter	np;
+
+		np.name = "Blocksize";
+		np.label = "Block Size";
+		np.minValues[0] = 1;
+		np.maxValues[0] = 2048;
+		np.minSliders[0] = 1;
+		np.maxSliders[0] = 2048.;
+		np.clampMins[0] = true;
+		np.clampMaxes[0] = true;
+		np.defaultValues[0] = 128;
+
+		OP_ParAppendResult res = manager->appendInt(np);
+		assert(res == OP_ParAppendResult::Success);
+	}
+
+	// pulse
+	{
+		OP_NumericParameter	np;
+
+		np.name = "Reset";
+		np.label = "Reset";
+
+		OP_ParAppendResult res = manager->appendPulse(np);
+		assert(res == OP_ParAppendResult::Success);
+	}
 
 }
 
 void
-TDVSTEffect::pulsePressed(const char* name, void* reserved1)
+TDVST::pulsePressed(const char* name, void* reserved1)
 {
 	if (!strcmp(name, "Reset"))
 	{
-		myOffset = 0.0;
+		if (myPlugin) {
+			myPlugin.reset();
+		}
 	}
 
 	if (!strcmp(name, "Loadfxp") && myPlugin)

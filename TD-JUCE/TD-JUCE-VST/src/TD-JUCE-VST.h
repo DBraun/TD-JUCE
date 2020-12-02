@@ -35,11 +35,11 @@ If no input is connected then the node will output a smooth sine wave at 120hz.
 #include <unordered_map> 
 
 // To get more help about these functions, look at CHOP_CPlusPlusBase.h
-class TDVSTEffect : public CHOP_CPlusPlusBase
+class TDVST : public CHOP_CPlusPlusBase
 {
 public:
-	TDVSTEffect(const OP_NodeInfo* info);
-	virtual ~TDVSTEffect();
+	TDVST(const OP_NodeInfo* info);
+	virtual ~TDVST();
 
 	virtual void		getGeneralInfo(CHOP_GeneralInfo*, const OP_Inputs*, void*) override;
 	virtual bool		getOutputInfo(CHOP_OutputInfo*, const OP_Inputs*, void*) override;
@@ -75,12 +75,10 @@ private:
 	// function is called, then passes back to the CHOP 
 	int32_t				myExecuteCount;
 
-	double				myOffset;
-
 	std::string myPluginPath;
 	juce::MidiBuffer myRenderMidiBuffer;
 	double mySampleRate;
-	int mySamplesPerBlock = 1024;
+	int mySamplesPerBlock = 0;
 	std::string emptyString = "";
 
 	bool checkPlugin(const char* pluginFilepath);
@@ -98,5 +96,7 @@ private:
 
 	std::unordered_map<int, std::pair<std::string, float>> myParameterMap;
 
-	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TDVSTEffect)
+	bool myActiveNotes[128];
+
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TDVST)
 };
