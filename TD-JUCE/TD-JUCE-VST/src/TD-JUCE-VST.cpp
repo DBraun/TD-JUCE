@@ -135,7 +135,7 @@ TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reser
 		mySampleRate = newSampleRate;
 		myCookRate = newRate;
 		
-		int bufferSize = (mySampleRate / newRate);
+		int bufferSize = (int) (mySampleRate / newRate);
 
 		if (myPlugin) {
 			myPlugin->prepareToPlay(newSampleRate, bufferSize);
@@ -155,9 +155,9 @@ TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reser
 		return false;
 	}
 	else {
-		info->numSamples = mySampleRate* inputs->getTimeInfo()->deltaMS / 1000;
+		info->numSamples = (int32_t) (mySampleRate* inputs->getTimeInfo()->deltaMS / 1000);
 		info->numChannels = 2;
-		info->sampleRate = mySampleRate;
+		info->sampleRate = (float) mySampleRate;
 
 		return true;
 	}
@@ -340,9 +340,9 @@ TDVST::execute(CHOP_Output* output,
 	{
 
 		if (vstParameterCHOP && i*mySamplesPerBlock < vstParameterCHOP->numSamples) {
-			for (size_t chan = 0; chan < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); chan++)
+			for (size_t chan = 0; chan < std::min(vstParameterCHOP->numChannels, (int32_t) myPlugin->getNumParameters()); chan++)
 			{
-				myPlugin->setParameter(chan, vstParameterCHOP->getChannelData(chan)[i*mySamplesPerBlock]);
+				myPlugin->setParameter((int)chan, vstParameterCHOP->getChannelData((int32_t)chan)[i*mySamplesPerBlock]);
 			}
 		}
 
@@ -351,18 +351,18 @@ TDVST::execute(CHOP_Output* output,
 			int maxSamp = std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples);
 			maxSamp = std::min(maxSamp, midiCHOP->numSamples);
 
-			for (size_t note = 0; note < std::min(128, midiCHOP->numChannels); note++)
+			for (int note = 0; note < std::min(128, midiCHOP->numChannels); note++)
 			{
 				for (size_t samp = i * mySamplesPerBlock; samp < maxSamp; samp++)
 				{
-					float velocity = midiCHOP->getChannelData(note)[samp];
+					float velocity = midiCHOP->getChannelData((int32_t)note)[(int)samp];
 					velocity = std::min(1.f, std::max(0.f, velocity));  // clamp 0 to 1
 					bool isOn = (bool)velocity;
 					if ((bool)velocity != myActiveNotes[note]) {
 
 						juce::MidiMessage myMidiMessage = isOn ? juce::MidiMessage::noteOn(1, note, velocity) : juce::MidiMessage::noteOff(1, note, velocity);
 
-						myRenderMidiBuffer.addEvent(myMidiMessage, samp - i * mySamplesPerBlock);
+						myRenderMidiBuffer.addEvent(myMidiMessage, (int)( samp - i * mySamplesPerBlock));
 						myActiveNotes[note] = isOn;
 
 						//std::cout << "note: " << note << " vel: " << velocity << " samp: " << samp - i * mySamplesPerBlock << std::endl;
@@ -377,7 +377,7 @@ TDVST::execute(CHOP_Output* output,
 		if (inputCHOP) {
 
 			//myBuffer->setDataToReferTo((float**)inputCHOP->channelData, 2, bufferSize);  // todo: dangerous to hard-code stereo input
-			for (size_t chan = 0; chan < 2; chan++)
+			for (int chan = 0; chan < 2; chan++)
 			{
 				myBuffer->copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
 			}
@@ -387,7 +387,7 @@ TDVST::execute(CHOP_Output* output,
 
 		for (int chan = 0; chan < output->numChannels; chan++) {
 			auto chanPtr = myBuffer->getReadPointer(chan);
-			for (int samp = i * mySamplesPerBlock; samp < std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples); samp++)
+			for (int samp = (int) i * mySamplesPerBlock; samp < std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples); samp++)
 			{
 				output->channels[chan][samp] = *chanPtr++;
 			}
@@ -395,7 +395,7 @@ TDVST::execute(CHOP_Output* output,
 	}
 
 	// TODO: only write to the map if the user requests it with a toggle custom parameter.
-	for (size_t i = 0; i < myPlugin->getNumParameters(); i++)
+	for (int i = 0; i < myPlugin->getNumParameters(); i++)
 	{
 		myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 	}
@@ -428,7 +428,7 @@ TDVST::getInfoCHOPChan(int32_t index,
 bool
 TDVST::getInfoDATSize(OP_InfoDATSize* infoSize, void* reserved1)
 {
-	infoSize->rows = myParameterMap.size();
+	infoSize->rows = (int32_t) myParameterMap.size();
 	infoSize->cols = 2;
 	// Setting this to false means we'll be assigning values to the table
 	// one row at a time. True means we'll do it one column at a time.
