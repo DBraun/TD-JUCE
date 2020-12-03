@@ -90,7 +90,7 @@ private:
 	double myCookRate = 0;
 
 	bool loadPreset(const std::string& path);
-	bool myDoLoadPreset = false;
+	bool myDoLoadPreset = true;
 
 	void saveParameterInfo();
 

@@ -195,8 +195,6 @@ TDVST::loadPreset(const std::string& path)
 
 #endif
 
-		std::cout << "Loaded preset " << path << std::endl;
-
 		return true;
 	}
 	catch (std::exception& e) {
@@ -322,7 +320,8 @@ TDVST::execute(CHOP_Output* output,
 	auto midiCHOP = inputs->getInputCHOP(2);
 
 	if (myDoLoadPreset) {
-		myDoLoadPreset = !loadPreset(inputs->getParFilePath("Fxpfile"));
+		loadPreset(inputs->getParFilePath("Fxpfile"));
+		myDoLoadPreset = false;
 	}
 
 	int newSamplesPerBlock = inputs->getParInt("Blocksize");
@@ -583,7 +582,6 @@ TDVST::pulsePressed(const char* name, void* reserved1)
 
 	if (!strcmp(name, "Loadfxp") && myPlugin)
 	{
-		std::cout << "loadfxp pulse" << std::endl;
 		myDoLoadPreset = true;
 	}
 
