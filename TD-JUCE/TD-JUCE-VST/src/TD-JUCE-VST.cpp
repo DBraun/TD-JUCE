@@ -339,10 +339,10 @@ TDVST::execute(CHOP_Output* output,
 	for (size_t i = 0; i < (output->numSamples / mySamplesPerBlock)+1; i++)
 	{
 
-		if (vstParameterCHOP) {
+		if (vstParameterCHOP && i*mySamplesPerBlock < vstParameterCHOP->numSamples) {
 			for (size_t chan = 0; chan < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); chan++)
 			{
-				myPlugin->setParameter(chan, vstParameterCHOP->getChannelData(chan)[std::min((int)i*mySamplesPerBlock, (int)vstParameterCHOP->numSamples)]);
+				myPlugin->setParameter(chan, vstParameterCHOP->getChannelData(chan)[i*mySamplesPerBlock]);
 			}
 		}
 
@@ -395,12 +395,11 @@ TDVST::execute(CHOP_Output* output,
 	}
 
 	// TODO: only write to the map if the user requests it with a toggle custom parameter.
-	if (vstParameterCHOP) {
-		for (size_t i = 0; i < std::min(vstParameterCHOP->numChannels, myPlugin->getNumParameters()); i++)
-		{
-			myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
-		}
+	for (size_t i = 0; i < myPlugin->getNumParameters(); i++)
+	{
+		myParameterMap[i] = std::make_pair(myPlugin->getParameterName(i).toStdString(), myPlugin->getParameter(i));
 	}
+	
 }
 
 int32_t
@@ -549,11 +548,11 @@ TDVST::setupParameters(OP_ParameterManager* manager, void* reserved1)
 		np.label = "Block Size";
 		np.minValues[0] = 1;
 		np.maxValues[0] = 2048;
-		np.minSliders[0] = 1;
-		np.maxSliders[0] = 2048.;
+		np.minSliders[0] = 64;
+		np.maxSliders[0] = 512;
 		np.clampMins[0] = true;
 		np.clampMaxes[0] = true;
-		np.defaultValues[0] = 128;
+		np.defaultValues[0] = 512;
 
 		OP_ParAppendResult res = manager->appendInt(np);
 		assert(res == OP_ParAppendResult::Success);
@@ -578,7 +577,7 @@ TDVST::pulsePressed(const char* name, void* reserved1)
 	if (!strcmp(name, "Reset"))
 	{
 		if (myPlugin) {
-			myPlugin.reset();
+			myPlugin->reset();
 		}
 	}
 
