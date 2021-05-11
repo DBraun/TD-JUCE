@@ -1,5 +1,3 @@
-#pragma once
-
 /* Shared Use License: This file is owned by Derivative Inc. (Derivative)
 * and can only be used, and/or modified for use, in conjunction with
 * Derivative's TouchDesigner software, and only if you are a licensee who has
@@ -25,14 +23,14 @@ stays the same, otherwise changes won't be backwards compatible
 
 
 #ifdef _WIN32
-#define NOMINMAX
-#include <windows.h>
-#include <stdint.h>
-#include "GL_Extensions.h"
-#define DLLEXPORT __declspec (dllexport)
+	#define NOMINMAX
+	#include <windows.h>
+	#include <stdint.h>
+	#include "GL_Extensions.h"
+	#define DLLEXPORT __declspec (dllexport)
 #else
-#include <OpenGL/gltypes.h>
-#define DLLEXPORT
+	#include <OpenGL/gltypes.h>
+	#define DLLEXPORT
 #endif
 
 #include <assert.h>
@@ -40,11 +38,43 @@ stays the same, otherwise changes won't be backwards compatible
 #include <float.h>
 
 #ifndef PyObject_HEAD
-struct _object;
-typedef _object PyObject;
+	struct _object;
+	typedef _object PyObject;
 #endif
 
+class OP_NodeInfo;
+
+// These are the definitions for the C-functions that are used to
+// load the library and create instances of the object you define
+class CHOP_PluginInfo;
+class CHOP_CPlusPlusBase;
+typedef void (__cdecl *FILLCHOPPLUGININFO)(CHOP_PluginInfo *info);
+typedef CHOP_CPlusPlusBase* (__cdecl *CREATECHOPINSTANCE)(const OP_NodeInfo*);
+typedef void (__cdecl *DESTROYCHOPINSTANCE)(CHOP_CPlusPlusBase*);
+
+class DAT_PluginInfo;
+class DAT_CPlusPlusBase;
+typedef void(__cdecl *FILLDATPLUGININFO)(DAT_PluginInfo *info);
+typedef DAT_CPlusPlusBase* (__cdecl *CREATEDATINSTANCE)(const OP_NodeInfo*);
+typedef void(__cdecl *DESTROYDATINSTANCE)(DAT_CPlusPlusBase*);
+
+class TOP_PluginInfo;
+class TOP_CPlusPlusBase;
+class TOP_Context;
+typedef void (__cdecl *FILLTOPPLUGININFO)(TOP_PluginInfo* info);
+typedef TOP_CPlusPlusBase* (__cdecl *CREATETOPINSTANCE)(const OP_NodeInfo*, TOP_Context*);
+typedef void (__cdecl *DESTROYTOPINSTANCE)(TOP_CPlusPlusBase*, TOP_Context*);
+
+class SOP_PluginInfo;
+class SOP_CPlusPlusBase;
+typedef void(__cdecl *FILLSOPPLUGININFO)(SOP_PluginInfo *info);
+typedef SOP_CPlusPlusBase* (__cdecl *CREATESOPINSTANCE)(const OP_NodeInfo*);
+typedef void(__cdecl *DESTROYSOPINSTANCE)(SOP_CPlusPlusBase*);
+
+
 struct cudaArray;
+
+#pragma pack(push, 8)
 
 enum class OP_CPUMemPixelType : int32_t
 {
@@ -86,17 +116,17 @@ public:
 	// character (A-Z), and the rest should be lower case
 	// Only the characters a-z and 0-9 are allowed in the opType.
 	// Spaces are not allowed
-	OP_String* opType;
+	OP_String*		opType;
 
 	// The english readable label for the node. This is what is shown in the 
 	// OP Create Menu dialog.
 	// Spaces and other special characters are allowed.
 	// This can be a UTF-8 encoded string for non-english langauge label
-	OP_String* opLabel;
+	OP_String*		opLabel;
 
 	// This should be three letters (upper or lower case), or numbers, which
 	// are used to create an icon for this Custom OP.
-	OP_String* opIcon;
+	OP_String*		opIcon;
 
 	// The minimum number of wired inputs required for this OP to function.
 	int32_t			minInputs = 0;
@@ -106,10 +136,10 @@ public:
 	int32_t			maxInputs = 0;
 
 	// The name of the author
-	OP_String* authorName;
+	OP_String*		authorName;
 
 	// The email of the author
-	OP_String* authorEmail;
+	OP_String*		authorEmail;
 
 	// Major version should be used to differentiate between drastically different
 	// versions of this Custom OP. In particular changes that arn't backwards
@@ -136,7 +166,7 @@ public:
 	// error cleanly. This should be set to PY_VERSION as defined in
 	// patchlevel.h from the Python include folder. (E.g, "3.5.1")
 	// It should be left unchanged if CPython isn't being used in this plugin.
-	OP_String* pythonVersion;
+	OP_String*		pythonVersion;
 
 	// False by default. If this is on the node will cook at least once
 	// when the project it is contained within starts up, or when the node
@@ -155,7 +185,7 @@ class OP_NodeInfo
 public:
 
 	// The full path to the operator
-	const char* opPath;
+	const char*		opPath;
 
 	// A unique ID representing the operator, no two operators will ever
 	// have the same ID in a single TouchDesigner instance.
@@ -170,7 +200,7 @@ public:
 
 	// The path to where the plugin's binary is located on this machine.
 	// UTF8-8 encoded.
-	const char* pluginPath;
+	const char*		pluginPath;
 
 	int32_t			reserved[17];
 };
@@ -179,36 +209,36 @@ public:
 class OP_DATInput
 {
 public:
-	const char* opPath;
+	const char*		opPath;
 	uint32_t		opId;
 
-	int32_t         numRows;
-	int32_t         numCols;
-	bool            isTable;
+	int32_t			numRows;
+	int32_t			numCols;
+	bool			isTable;
 
 	// data, referenced by (row,col), which will be a const char* for the
 	// contents of the cell
 	// E.g getCell(1,2) will be the contents of the cell located at (1,2)
 	// The string will be in UTF-8 encoding.
 	const char*
-		getCell(int32_t row, int32_t col) const
+	getCell(int32_t row, int32_t col) const
 	{
 		return cellData[row * numCols + col];
 	}
 
-	const char** cellData;
+	const char**	cellData;
 
 	// The number of times this node has cooked
 	int64_t			totalCooks;
 
-	int32_t         reserved[18];
+	int32_t			reserved[18];
 };
 
 
 class OP_TOPInput
 {
 public:
-	const char* opPath;
+	const char*		opPath;
 	uint32_t		opId;
 
 	int32_t			width;
@@ -238,7 +268,7 @@ public:
 	int32_t			reserved1;
 
 	// When the TOP_ExecuteMode is CUDA, this will be filled in
-	cudaArray* cudaInput;
+	cudaArray*		cudaInput;
 
 	// The number of times this node has cooked
 	int64_t			totalCooks;
@@ -272,7 +302,7 @@ class OP_CHOPInput
 {
 public:
 
-	const char* opPath;
+	const char*		opPath;
 	uint32_t		opId;
 
 	int32_t			numChannels;
@@ -288,7 +318,7 @@ public:
 	// e.g: getChannelData(1)[10] will refer to the 11th sample in the 2nd channel
 
 	const float*
-		getChannelData(int32_t i) const
+	getChannelData(int32_t i) const
 	{
 		return channelData[i];
 	}
@@ -299,13 +329,13 @@ public:
 	// For example getChannelName(1) is the name of the 2nd channel
 
 	const char*
-		getChannelName(int32_t i) const
+	getChannelName(int32_t i) const
 	{
 		return nameData[i];
 	}
 
-	const float** channelData;
-	const char** nameData;
+	const float**	channelData;
+	const char**	nameData;
 
 	// The number of times this node has cooked
 	int64_t			totalCooks;
@@ -318,7 +348,7 @@ class OP_ObjectInput
 {
 public:
 
-	const char* opPath;
+	const char*		opPath;
 	uint32_t		opId;
 
 	// Use these methods to calculate object transforms
@@ -377,7 +407,7 @@ public:
 
 	// inplace operators
 	inline Vector&
-		operator*=(const float scalar)
+	operator*=(const float scalar)
 	{
 		x *= scalar;
 		y *= scalar;
@@ -386,7 +416,7 @@ public:
 	}
 
 	inline Vector&
-		operator/=(const float scalar)
+	operator/=(const float scalar)
 	{
 		x /= scalar;
 		y /= scalar;
@@ -395,7 +425,7 @@ public:
 	}
 
 	inline Vector&
-		operator-=(const Vector& trans)
+	operator-=(const Vector& trans)
 	{
 		x -= trans.x;
 		y -= trans.y;
@@ -404,7 +434,7 @@ public:
 	}
 
 	inline Vector&
-		operator+=(const Vector& trans)
+	operator+=(const Vector& trans)
 	{
 		x += trans.x;
 		y += trans.y;
@@ -414,7 +444,7 @@ public:
 
 	// non-inplace operations:
 	inline Vector
-		operator*(const float scalar)
+	operator*(const float scalar)
 	{
 		Vector temp(*this);
 		temp.x *= scalar;
@@ -424,7 +454,7 @@ public:
 	}
 
 	inline Vector
-		operator/(const float scalar)
+	operator/(const float scalar)
 	{
 		Vector temp(*this);
 		temp.x /= scalar;
@@ -434,7 +464,7 @@ public:
 	}
 
 	inline Vector
-		operator-(const Vector& trans)
+	operator-(const Vector& trans)
 	{
 		Vector temp(*this);
 		temp.x -= trans.x;
@@ -444,7 +474,7 @@ public:
 	}
 
 	inline Vector
-		operator+(const Vector& trans)
+	operator+(const Vector& trans)
 	{
 		Vector temp(*this);
 		temp.x += trans.x;
@@ -455,19 +485,19 @@ public:
 
 	//------
 	float
-		dot(const Vector& v) const
+	dot(const Vector &v) const
 	{
 		return x * v.x + y * v.y + z * v.z;
 	}
 
 	inline float
-		length()
+	length()
 	{
 		return sqrtf(dot(*this));
 	}
 
 	inline float
-		normalize()
+	normalize()
 	{
 		float dn = x * x + y * y + z * z;
 		if (dn > FLT_MIN && dn != 1.0F)
@@ -579,7 +609,7 @@ public:
 class Color
 {
 public:
-	Color()
+	Color ()
 	{
 		r = 1.0f;
 		g = 1.0f;
@@ -587,7 +617,7 @@ public:
 		a = 1.0f;
 	}
 
-	Color(float rr, float gg, float bb, float aa)
+	Color (float rr, float gg, float bb, float aa)
 	{
 		r = rr;
 		g = gg;
@@ -655,7 +685,7 @@ public:
 
 	// enlarge the bounding box by the input point Position
 	void
-		enlargeBounds(const Position& pos)
+	enlargeBounds(const Position& pos)
 	{
 		if (pos.x < minX)
 			minX = pos.x;
@@ -673,7 +703,7 @@ public:
 
 	// enlarge the bounding box by the input bounding box:
 	void
-		enlargeBounds(const BoundingBox& box)
+	enlargeBounds(const BoundingBox &box)
 	{
 		if (box.minX < minX)
 			minX = box.minX;
@@ -691,27 +721,27 @@ public:
 
 	// returns the bounding box length in x axis:
 	float
-		sizeX()
+	sizeX()
 	{
 		return maxX - minX;
 	}
 
 	// returns the bounding box length in y axis:
 	float
-		sizeY()
+	sizeY()
 	{
 		return maxY - minY;
 	}
 
 	// returns the bounding box length in z axis:
 	float
-		sizeZ()
+	sizeZ()
 	{
 		return maxZ - minZ;
 	}
 
 	bool
-		getCenter(Position* pos)
+	getCenter(Position* pos)
 	{
 		if (!pos)
 			return false;
@@ -723,7 +753,7 @@ public:
 
 	// verifies if the input position (pos) is inside the current bounding box or not:
 	bool
-		isInside(const Position& pos)
+	isInside(const Position& pos)
 	{
 		if (pos.x >= minX && pos.x <= maxX &&
 			pos.y >= minY && pos.y <= maxY &&
@@ -758,7 +788,7 @@ public:
 
 	int32_t			numNormals;
 	AttribSet	 	attribSet;
-	const Vector* normals;
+	const Vector*	normals;
 };
 
 class SOP_ColorInfo
@@ -774,7 +804,7 @@ public:
 
 	int32_t			numColors;
 	AttribSet		attribSet;
-	const Color* colors;
+	const Color*	colors;
 };
 
 class SOP_TextureInfo
@@ -791,7 +821,7 @@ public:
 
 	int32_t			numTextures;
 	AttribSet		attribSet;
-	const TexCoord* textures;
+	const TexCoord*	textures;
 	int32_t			numTextureLayers;
 };
 
@@ -820,7 +850,7 @@ public:
 		attribType = type;
 	}
 
-	const char* name;
+	const char*			name;
 	int32_t				numComponents;
 	AttribType			attribType;
 };
@@ -845,8 +875,8 @@ public:
 		intData = nullptr;
 	}
 
-	const float* floatData;
-	const int32_t* intData;
+	const float*		floatData;
+	const int32_t*		intData;
 
 };
 
@@ -870,7 +900,7 @@ public:
 
 	// all the indices of the vertices of the primitive. This array has
 	// numVertices entries in it
-	const int32_t* pointIndices;
+	const int32_t*	pointIndices;
 
 	// The type of this primitive
 	PrimitiveType	type;
@@ -894,7 +924,7 @@ public:
 
 
 
-	const char* opPath;
+	const char*		opPath;
 	uint32_t		opId;
 
 
@@ -911,16 +941,16 @@ public:
 	virtual int32_t			getNumCustomAttributes() const = 0;
 
 	// Returns an array of point positions. This array is getNumPoints() long.
-	virtual const Position* getPointPositions() const = 0;
+	virtual const Position*	getPointPositions() const = 0;
 
 	// Returns an array of normals.
 	//
 	// Returns nullptr if no normals are present
-	virtual const SOP_NormalInfo* getNormals() const = 0;
+	virtual const SOP_NormalInfo* 	getNormals() const = 0;
 
 	// Returns an array of colors.
 	// Returns nullptr if no colors are present
-	virtual const SOP_ColorInfo* getColors() const = 0;
+	virtual const SOP_ColorInfo* 	getColors() const = 0;
 
 	// Returns an array of texture coordinates.
 	// If multiple texture coordinate layers are present, they will be placed
@@ -928,13 +958,13 @@ public:
 	// E.g layer0 followed by layer1 followed by layer0 etc.
 	//
 	// Returns nullptr if no texture layers are present
-	virtual const SOP_TextureInfo* getTextures() const = 0;
+	virtual const SOP_TextureInfo*	getTextures() const = 0;
 
 	// Returns the custom attribute data with an input index
-	virtual const SOP_CustomAttribData* getCustomAttribute(int32_t customAttribIndex) const = 0;
+	virtual const SOP_CustomAttribData*	getCustomAttribute(int32_t customAttribIndex) const = 0;
 
 	// Returns the custom attribute data with its name
-	virtual const SOP_CustomAttribData* getCustomAttribute(const char* customAttribName) const = 0;
+	virtual const SOP_CustomAttribData*	getCustomAttribute(const char* customAttribName) const = 0;
 
 	// Returns true if the SOP has a normal attribute of the given source
 	// attribute 'N'
@@ -944,9 +974,17 @@ public:
 	// attribute 'Cd'
 	virtual bool			hasColors() const = 0;
 
+	// Returns true if the position lies inside the geometry.
+	virtual bool			isInside(const Position &pos) = 0;
+
+	// Returns true if the ray intersected with the geometry
+	virtual bool			sendRay(const Position &pos, const Vector &dir, 
+								Position &hitPostion, float &hitLength, Vector &hitNormal,
+								float &hitU, float &hitV, int &hitPrimitiveIndex) = 0;
+
 	// Returns the SOP_PrimitiveInfo with primIndex
 	const SOP_PrimitiveInfo
-		getPrimitive(int32_t primIndex) const
+	getPrimitive(int32_t primIndex) const
 	{
 		return myPrimsInfo[primIndex];
 	}
@@ -954,18 +992,18 @@ public:
 	// Returns the full list of all the point indices for all primitives.
 	// The primitives are stored back to back in this array.
 	const int32_t*
-		getAllPrimPointIndices()
+	getAllPrimPointIndices()
 	{
 		return myPrimPointIndices;
 	}
 
-	SOP_PrimitiveInfo* myPrimsInfo;
-	const int32_t* myPrimPointIndices;
+	SOP_PrimitiveInfo*		myPrimsInfo;
+	const int32_t*			myPrimPointIndices;
 
 	// The number of times this node has cooked
 	int64_t			totalCooks;
 
-	int32_t			reserved[98];
+	int32_t			reserved[97];
 };
 
 
@@ -1063,19 +1101,19 @@ public:
 
 	// Will return nullptr when the input has nothing connected to it.
 	// only valid for C++ TOP operators
-	virtual const OP_TOPInput* getInputTOP(int32_t index) const = 0;
+	virtual const OP_TOPInput*		getInputTOP(int32_t index) const = 0;
 	// Only valid for C++ CHOP operators
-	virtual const OP_CHOPInput* getInputCHOP(int32_t index) const = 0;
+	virtual const OP_CHOPInput*		getInputCHOP(int32_t index) const = 0;
 	// getInputSOP() declared later on in the class
 	// getInputDAT() declared later on in the class
 
 	// these are defined by parameters.
 	// may return nullptr when invalid input
 	// this value is valid until the parameters are rebuilt or it is called with the same parameter name.
-	virtual const OP_DATInput* getParDAT(const char* name) const = 0;
-	virtual const OP_TOPInput* getParTOP(const char* name) const = 0;
-	virtual const OP_CHOPInput* getParCHOP(const char* name) const = 0;
-	virtual const OP_ObjectInput* getParObject(const char* name) const = 0;
+	virtual const OP_DATInput*		getParDAT(const char *name) const = 0;
+	virtual const OP_TOPInput*		getParTOP(const char *name) const = 0;
+	virtual const OP_CHOPInput*		getParCHOP(const char *name) const = 0;
+	virtual const OP_ObjectInput*	getParObject(const char *name) const = 0;
 	// getParSOP() declared later on in the class
 
 	// these work on any type of parameter and can be interchanged
@@ -1085,24 +1123,24 @@ public:
 	virtual double		getParDouble(const char* name, int32_t index = 0) const = 0;
 
 	// for multiple values: returns True on success/false otherwise
-	virtual bool        getParDouble2(const char* name, double& v0, double& v1) const = 0;
-	virtual bool        getParDouble3(const char* name, double& v0, double& v1, double& v2) const = 0;
-	virtual bool        getParDouble4(const char* name, double& v0, double& v1, double& v2, double& v3) const = 0;
+	virtual bool		getParDouble2(const char* name, double &v0, double &v1) const = 0;
+	virtual bool		getParDouble3(const char* name, double &v0, double &v1, double &v2) const = 0;
+	virtual bool		getParDouble4(const char* name, double &v0, double &v1, double &v2, double &v3) const = 0;
 
 
 	// returns the requested value
 	virtual int32_t		getParInt(const char* name, int32_t index = 0) const = 0;
 
 	// for multiple values: returns True on success/false otherwise
-	virtual bool        getParInt2(const char* name, int32_t& v0, int32_t& v1) const = 0;
-	virtual bool        getParInt3(const char* name, int32_t& v0, int32_t& v1, int32_t& v2) const = 0;
-	virtual bool        getParInt4(const char* name, int32_t& v0, int32_t& v1, int32_t& v2, int32_t& v3) const = 0;
+	virtual bool		getParInt2(const char* name, int32_t &v0, int32_t &v1) const = 0;
+	virtual bool		getParInt3(const char* name, int32_t &v0, int32_t &v1, int32_t &v2) const = 0;
+	virtual bool		getParInt4(const char* name, int32_t &v0, int32_t &v1, int32_t &v2, int32_t &v3) const = 0;
 
 	// returns the requested value
 	// this value is valid until the parameters are rebuilt or it is called with the same parameter name.
 	// return value usable for life of parameter
 	// The returned string will be in UTF-8 encoding.
-	virtual const char* getParString(const char* name) const = 0;
+	virtual const char*	getParString(const char* name) const = 0;
 
 
 	// this is similar to getParString, but will return an absolute path if it exists, with
@@ -1110,7 +1148,7 @@ public:
 	// to get the original parameter value, use getParString
 	// return value usable for life of parameter
 	// The returned string will be in UTF-8 encoding.
-	virtual const char* getParFilePath(const char* name) const = 0;
+	virtual const char*	getParFilePath(const char* name) const = 0;
 
 	// returns true on success
 	// from_name and to_name must be Object parameters
@@ -1124,10 +1162,10 @@ public:
 	// these are defined by paths.
 	// may return nullptr when invalid input
 	// this value is valid until the parameters are rebuilt or it is called with the same parameter name.
-	virtual const OP_DATInput* getDAT(const char* path) const = 0;
-	virtual const OP_TOPInput* getTOP(const char* path) const = 0;
-	virtual const OP_CHOPInput* getCHOP(const char* path) const = 0;
-	virtual const OP_ObjectInput* getObject(const char* path) const = 0;
+	virtual const OP_DATInput*		getDAT(const char *path) const = 0;
+	virtual const OP_TOPInput*		getTOP(const char *path) const = 0;
+	virtual const OP_CHOPInput*		getCHOP(const char *path) const = 0;
+	virtual const OP_ObjectInput*	getObject(const char *path) const = 0;
 
 
 	// This function can be used to retrieve the TOPs texture data in CPU
@@ -1139,37 +1177,37 @@ public:
 	// Returns the data, which will be valid until the end of execute()
 	// Returned value may be nullptr in some cases, such as the first call
 	// to this with options->downloadType == OP_TOP_DOWNLOAD_DELAYED.
-	virtual void* getTOPDataInCPUMemory(const OP_TOPInput* top,
-		const OP_TOPInputDownloadOptions* options) const = 0;
+	virtual void* 					getTOPDataInCPUMemory(const OP_TOPInput *top,
+		const OP_TOPInputDownloadOptions *options) const = 0;
 
 
-	virtual const OP_SOPInput* getParSOP(const char* name) const = 0;
+	virtual const OP_SOPInput*		getParSOP(const char *name) const = 0;
 	// only valid for C++ SOP operators
-	virtual const OP_SOPInput* getInputSOP(int32_t index) const = 0;
-	virtual const OP_SOPInput* getSOP(const char* path) const = 0;
+	virtual const OP_SOPInput*		getInputSOP(int32_t index) const = 0;
+	virtual const OP_SOPInput*		getSOP(const char *path) const = 0;
 
 	// only valid for C++ DAT operators
-	virtual const OP_DATInput* getInputDAT(int32_t index) const = 0;
+	virtual const OP_DATInput*		getInputDAT(int32_t index) const = 0;
 
 	// To use Python in your Plugin you need to fill the
 	// customOPInfo.pythonVersion member in Fill*PluginInfo.
 	//
 	// The returned object, if not null should have its reference count decremented
 	// or else a memorky leak will occur.
-	virtual PyObject* getParPython(const char* name) const = 0;
+	virtual PyObject*				getParPython(const char* name) const = 0;
 
 
 	// Returns a class whose members gives you information about timing
 	// such as FPS and delta-time since the last cook.
 	// See OP_TimeInfo for more information
-	virtual const OP_TimeInfo* getTimeInfo() const = 0;
+	virtual const OP_TimeInfo*		getTimeInfo() const = 0;
 
 };
 
 class OP_InfoCHOPChan
 {
 public:
-	OP_String* name;
+	OP_String*		name;
 	float			value;
 
 	int32_t			reserved[10];
@@ -1205,7 +1243,7 @@ public:
 	// values to.
 	// e.g values[1]->setString("myColumnName");
 	// The string should be in UTF-8 encoding.
-	OP_String** values;
+	OP_String**			values;
 
 	int32_t			reserved[10];
 };
@@ -1220,7 +1258,7 @@ public:
 		name = iname;
 		label = page = nullptr;
 
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i<4; i++)
 		{
 			defaultValues[i] = 0.0;
 
@@ -1238,9 +1276,9 @@ public:
 	// Any char* values passed are copied immediately by the append parameter functions,
 	// and do not need to be retained by the calling function.
 	// Must begin with capital letter, and contain no spaces
-	const char* name;
-	const char* label;
-	const char* page;
+	const char*	name;
+	const char*	label;
+	const char*	page;
 
 	double		defaultValues[4];
 	double		minValues[4];
@@ -1272,12 +1310,12 @@ public:
 	// and do not need to be retained by the calling function.
 
 	// Must begin with capital letter, and contain no spaces
-	const char* name;
-	const char* label;
-	const char* page;
+	const char*	name;
+	const char*	label;
+	const char*	page;
 
 	// This should be in UTF-8 encoding.
-	const char* defaultValue;
+	const char*	defaultValue;
 
 	int32_t		reserved[20];
 };
@@ -1298,71 +1336,82 @@ public:
 
 	// Returns PARAMETER_APPEND_SUCCESS on succesful
 
-	virtual OP_ParAppendResult		appendFloat(const OP_NumericParameter& np, int32_t size = 1) = 0;
-	virtual OP_ParAppendResult		appendInt(const OP_NumericParameter& np, int32_t size = 1) = 0;
+	virtual OP_ParAppendResult		appendFloat(const OP_NumericParameter &np, int32_t size = 1) = 0;
+	virtual OP_ParAppendResult		appendInt(const OP_NumericParameter &np, int32_t size = 1) = 0;
 
-	virtual OP_ParAppendResult		appendXY(const OP_NumericParameter& np) = 0;
-	virtual OP_ParAppendResult		appendXYZ(const OP_NumericParameter& np) = 0;
+	virtual OP_ParAppendResult		appendXY(const OP_NumericParameter &np) = 0;
+	virtual OP_ParAppendResult		appendXYZ(const OP_NumericParameter &np) = 0;
 
-	virtual OP_ParAppendResult		appendUV(const OP_NumericParameter& np) = 0;
-	virtual OP_ParAppendResult		appendUVW(const OP_NumericParameter& np) = 0;
+	virtual OP_ParAppendResult		appendUV(const OP_NumericParameter &np) = 0;
+	virtual OP_ParAppendResult		appendUVW(const OP_NumericParameter &np) = 0;
 
-	virtual OP_ParAppendResult		appendRGB(const OP_NumericParameter& np) = 0;
-	virtual OP_ParAppendResult		appendRGBA(const OP_NumericParameter& np) = 0;
+	virtual OP_ParAppendResult		appendRGB(const OP_NumericParameter &np) = 0;
+	virtual OP_ParAppendResult		appendRGBA(const OP_NumericParameter &np) = 0;
 
-	virtual OP_ParAppendResult		appendToggle(const OP_NumericParameter& np) = 0;
-	virtual OP_ParAppendResult		appendPulse(const OP_NumericParameter& np) = 0;
+	virtual OP_ParAppendResult		appendToggle(const OP_NumericParameter &np) = 0;
+	virtual OP_ParAppendResult		appendPulse(const OP_NumericParameter &np) = 0;
 
-	virtual OP_ParAppendResult		appendString(const OP_StringParameter& sp) = 0;
-	virtual OP_ParAppendResult		appendFile(const OP_StringParameter& sp) = 0;
-	virtual OP_ParAppendResult		appendFolder(const OP_StringParameter& sp) = 0;
+	virtual OP_ParAppendResult		appendString(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendFile(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendFolder(const OP_StringParameter &sp) = 0;
 
-	virtual OP_ParAppendResult		appendDAT(const OP_StringParameter& sp) = 0;
-	virtual OP_ParAppendResult		appendCHOP(const OP_StringParameter& sp) = 0;
-	virtual OP_ParAppendResult		appendTOP(const OP_StringParameter& sp) = 0;
-	virtual OP_ParAppendResult		appendObject(const OP_StringParameter& sp) = 0;
+	virtual OP_ParAppendResult		appendDAT(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendCHOP(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendTOP(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendObject(const OP_StringParameter &sp) = 0;
 	// appendSOP() located further down in the class
 
 
 	// Any char* values passed are copied immediately by the append parameter functions,
 	// and do not need to be retained by the calling function.
-	virtual OP_ParAppendResult		appendMenu(const OP_StringParameter& sp,
-		int32_t nitems, const char** names,
-		const char** labels) = 0;
+	virtual OP_ParAppendResult		appendMenu(const OP_StringParameter &sp,
+		int32_t nitems, const char **names,
+		const char **labels) = 0;
 
 	// Any char* values passed are copied immediately by the append parameter functions,
 	// and do not need to be retained by the calling function.
-	virtual OP_ParAppendResult		appendStringMenu(const OP_StringParameter& sp,
-		int32_t nitems, const char** names,
-		const char** labels) = 0;
+	virtual OP_ParAppendResult		appendStringMenu(const OP_StringParameter &sp,
+		int32_t nitems, const char **names,
+		const char **labels) = 0;
 
-	virtual OP_ParAppendResult		appendSOP(const OP_StringParameter& sp) = 0;
+	virtual OP_ParAppendResult		appendSOP(const OP_StringParameter &sp) = 0;
 
 	// To use Python in your Plugin you need to fill the
 	// customOPInfo.pythonVersion member in Fill*PluginInfo.
-	virtual OP_ParAppendResult		appendPython(const OP_StringParameter& sp) = 0;
+	virtual OP_ParAppendResult		appendPython(const OP_StringParameter &sp) = 0;
 
+
+	virtual OP_ParAppendResult		appendOP(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendCOMP(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendMAT(const OP_StringParameter &sp) = 0;
+	virtual OP_ParAppendResult		appendPanelCOMP(const OP_StringParameter &sp) = 0;
+
+	virtual OP_ParAppendResult		appendHeader(const OP_StringParameter &np) = 0;
+	virtual OP_ParAppendResult		appendMomentary(const OP_NumericParameter &np) = 0;
+	virtual OP_ParAppendResult		appendWH(const OP_NumericParameter &np) = 0;
 
 };
 
-static_assert(offsetof(OP_CustomOPInfo, opType) == 0, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, opLabel) == 8, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, opIcon) == 16, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, minInputs) == 24, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, maxInputs) == 28, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, authorName) == 32, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, authorEmail) == 40, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, majorVersion) == 48, "Incorrect Alignment");
-static_assert(offsetof(OP_CustomOPInfo, minorVersion) == 52, "Incorrect Alignment");
+#pragma pack(pop)
+
+static_assert(offsetof(OP_CustomOPInfo,	opType) == 0, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	opLabel) == 8, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	opIcon) == 16, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	minInputs) == 24, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	maxInputs) == 28, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	authorName) == 32, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	authorEmail) == 40, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	majorVersion) == 48, "Incorrect Alignment");
+static_assert(offsetof(OP_CustomOPInfo,	minorVersion) == 52, "Incorrect Alignment");
 static_assert(sizeof(OP_CustomOPInfo) == 456, "Incorrect Size");
 
 static_assert(offsetof(OP_NodeInfo, opPath) == 0, "Incorrect Alignment");
 static_assert(offsetof(OP_NodeInfo, opId) == 8, "Incorrect Alignment");
 #ifdef _WIN32
-static_assert(offsetof(OP_NodeInfo, mainWindowHandle) == 16, "Incorrect Alignment");
-static_assert(sizeof(OP_NodeInfo) == 104, "Incorrect Size");
+	static_assert(offsetof(OP_NodeInfo, mainWindowHandle) == 16, "Incorrect Alignment");
+	static_assert(sizeof(OP_NodeInfo) == 104, "Incorrect Size");
 #else
-static_assert(sizeof(OP_NodeInfo) == 96, "Incorrect Size");
+	static_assert(sizeof(OP_NodeInfo) == 96, "Incorrect Size");
 #endif
 
 static_assert(offsetof(OP_DATInput, opPath) == 0, "Incorrect Alignment");

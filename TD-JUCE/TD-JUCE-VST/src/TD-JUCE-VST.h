@@ -35,7 +35,7 @@ If no input is connected then the node will output a smooth sine wave at 120hz.
 #include <unordered_map> 
 
 // To get more help about these functions, look at CHOP_CPlusPlusBase.h
-class TDVST : public CHOP_CPlusPlusBase
+class TDVST : public CHOP_CPlusPlusBase, juce::AudioPlayHead
 {
 public:
 	TDVST(const OP_NodeInfo* info);
@@ -63,6 +63,13 @@ public:
 
 	virtual void		setupParameters(OP_ParameterManager* manager, void* reserved1) override;
 	virtual void		pulsePressed(const char* name, void* reserved1) override;
+
+	// AudioPlayhead delegate
+	bool getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo& result) override;
+	bool canControlTransport() override;
+	void transportPlay(bool shouldStartPlaying) override;
+	void transportRecord(bool shouldStartRecording) override;
+	void transportRewind() override;
 
 private:
 
@@ -97,6 +104,10 @@ private:
 	std::unordered_map<int, std::pair<std::string, float>> myParameterMap;
 
 	bool myActiveNotes[128];
+
+	CurrentPositionInfo myCurrentPositionInfo;
+
+	void updatePosInfo(const OP_TimeInfo* timeInfo);
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TDVST)
 };

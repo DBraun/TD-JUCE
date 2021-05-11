@@ -84,6 +84,21 @@ TDVST::TDVST(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
 	{
 		myActiveNotes[i] = 0;
 	}
+
+	myCurrentPositionInfo.resetToDefault();
+
+	myCurrentPositionInfo.isPlaying = true;
+	myCurrentPositionInfo.isRecording = true;
+	myCurrentPositionInfo.isLooping = false;
+
+	myCurrentPositionInfo.bpm = 120.;
+	myCurrentPositionInfo.timeSigNumerator = 4;
+	myCurrentPositionInfo.timeSigDenominator = 4;
+
+	myCurrentPositionInfo.ppqPosition = 0;
+	myCurrentPositionInfo.ppqPositionOfLastBarStart = 0;
+	myCurrentPositionInfo.timeInSamples = 0;
+	myCurrentPositionInfo.timeInSeconds = 0;
 }
 
 TDVST::~TDVST()
@@ -92,10 +107,12 @@ TDVST::~TDVST()
 	{
 		myPlugin->releaseResources();
 		myPlugin.release();
+		myPlugin = nullptr;
 	}
 
 	if (myBuffer) {
 		delete myBuffer;
+		myBuffer = nullptr;
 	}
 }
 
@@ -114,9 +131,20 @@ TDVST::getGeneralInfo(CHOP_GeneralInfo* ginfo, const OP_Inputs* inputs, void* re
 	ginfo->inputMatchIndex = 0;
 }
 
+void
+TDVST::updatePosInfo(const OP_TimeInfo* timeInfo) {
+	// todo(DBraun) is there a way to set this automatically from TouchDesigner's BPM and time signature?
+	myCurrentPositionInfo.bpm = 120.;
+	myCurrentPositionInfo.timeSigNumerator = 4;
+	myCurrentPositionInfo.timeSigDenominator = 4;
+}
+
 bool
 TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reserved1)
 {
+
+	auto timeInfo = inputs->getTimeInfo();
+	updatePosInfo(timeInfo);
 
 	auto inputAudioCHOP = inputs->getInputCHOP(0);
 
@@ -166,7 +194,9 @@ TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reser
 void
 TDVST::getChannelName(int32_t index, OP_String* name, const OP_Inputs* inputs, void* reserved1)
 {
-	name->setString("chan1");
+	std::stringstream ss;
+	ss << "chan" << (index + 1);
+	name->setString(ss.str().c_str());
 }
 
 
@@ -285,10 +315,9 @@ TDVST::checkPlugin(const char* pluginFilepath) {
 
 			saveParameterInfo();
 
-			if (myPlugin) {
-				myPlugin->prepareToPlay(mySampleRate, 2048);
-			}
-
+			myPlugin->setPlayHead(this);
+			myPlugin->prepareToPlay(mySampleRate, 2048);
+			
 			myPlugin->setNonRealtime(false);  // todo: allow non-realtime render if TouchDesigner is set to non-realtime?
 
 			myPluginPath = pluginFilepath;
@@ -383,6 +412,10 @@ TDVST::execute(CHOP_Output* output,
 		}
 
 		myPlugin->processBlock(*myBuffer, myRenderMidiBuffer);
+
+		// increment the position
+		myCurrentPositionInfo.timeInSamples += myBuffer->getNumSamples();
+		myCurrentPositionInfo.ppqPosition = (myCurrentPositionInfo.timeInSamples / (mySampleRate * 60.)) * myCurrentPositionInfo.bpm;
 
 		for (int chan = 0; chan < output->numChannels; chan++) {
 			auto chanPtr = myBuffer->getReadPointer(chan);
@@ -578,6 +611,10 @@ TDVST::pulsePressed(const char* name, void* reserved1)
 		if (myPlugin) {
 			myPlugin->reset();
 		}
+		myCurrentPositionInfo.ppqPosition = 0;
+		myCurrentPositionInfo.ppqPositionOfLastBarStart = 0;
+		myCurrentPositionInfo.timeInSamples = 0;
+		myCurrentPositionInfo.timeInSeconds = 0;
 	}
 
 	if (!strcmp(name, "Loadfxp") && myPlugin)
@@ -586,3 +623,25 @@ TDVST::pulsePressed(const char* name, void* reserved1)
 	}
 
 }
+
+bool
+TDVST::getCurrentPosition(juce::AudioPlayHead::CurrentPositionInfo& result) {
+	result = myCurrentPositionInfo;
+	return true;
+};
+
+/** Returns true if this object can control the transport. */
+bool
+TDVST::canControlTransport() { return true; }
+
+/** Starts or stops the audio. */
+void
+TDVST::transportPlay(bool shouldStartPlaying) { }
+
+/** Starts or stops recording the audio. */
+void
+TDVST::transportRecord(bool shouldStartRecording) { }
+
+/** Rewinds the audio. */
+void
+TDVST::transportRewind() {}
