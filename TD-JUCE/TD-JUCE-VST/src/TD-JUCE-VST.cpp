@@ -78,7 +78,8 @@ TDVST::TDVST(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
 {
 	myExecuteCount = 0;
 
-	myBuffer.setSize(2, 2048);
+	myBuffer.setSize(2, 1024);
+	myBufferSecondary.setSize(2, 0);
 
 	for (size_t i = 0; i < 128; i++)
 	{
@@ -147,13 +148,13 @@ TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reser
 		newSampleRate = inputs->getParDouble("Samplerate");
 	}
 
-	double newRate = inputs->getTimeInfo()->rate;
+	double newRate = timeInfo->rate;
 
 	if (newSampleRate != mySampleRate || myCookRate != newRate) {
 		mySampleRate = newSampleRate;
 		myCookRate = newRate;
 		
-		int bufferSize = (int) (mySampleRate / newRate);
+		int bufferSize = (int) ((mySampleRate-1)/ newRate) + 1;
 
 		if (myPlugin) {
 			myPlugin->prepareToPlay(newSampleRate, bufferSize);
@@ -167,13 +168,11 @@ TDVST::getOutputInfo(CHOP_OutputInfo* info, const OP_Inputs* inputs, void* reser
 
 	info->numChannels = 2;
 
-	// return false;
-
 	if (inputAudioCHOP) {
 		return false;
 	}
 	else {
-		info->numSamples = (int32_t) (mySampleRate* inputs->getTimeInfo()->deltaMS / 1000);
+		info->numSamples = (int32_t) (mySampleRate* timeInfo->deltaMS / 1000);
 		info->numChannels = 2;
 		info->sampleRate = (float) mySampleRate;
 
@@ -302,7 +301,7 @@ TDVST::checkPlugin(const char* pluginFilepath) {
 			saveParameterInfo();
 
 			myPlugin->setPlayHead(this);
-			myPlugin->prepareToPlay(mySampleRate, 2048);
+			myPlugin->prepareToPlay(mySampleRate, 1024);
 			
 			myPlugin->setNonRealtime(false);  // todo: allow non-realtime render if TouchDesigner is set to non-realtime?
 
@@ -346,11 +345,14 @@ TDVST::execute(CHOP_Output* output,
 		myPlugin->prepareToPlay(mySampleRate, newSamplesPerBlock);
 	}
 	mySamplesPerBlock = newSamplesPerBlock;
+
+	myBuffer.setSize(2, mySamplesPerBlock, false, false, false); // todo: dangerous to hard-code stereo output
+	myBufferSecondary.setSize(2, output->numSamples % mySamplesPerBlock, false, false, false);
 	
 	myRenderMidiBuffer.clear();
 
 	// i is the "block index"
-	for (size_t i = 0; i < (output->numSamples / mySamplesPerBlock)+1; i++)
+	for (size_t i = 0; i < ((output->numSamples-1) / mySamplesPerBlock)+1; i++)
 	{
 
 		if (vstParameterCHOP && i*mySamplesPerBlock < vstParameterCHOP->numSamples) {
@@ -387,24 +389,25 @@ TDVST::execute(CHOP_Output* output,
 
 		int bufferSize = std::min(mySamplesPerBlock, (int)(output->numSamples - (i * mySamplesPerBlock)));
 		myPlugin->prepareToPlay(mySampleRate, bufferSize);
-		myBuffer.setSize(2, bufferSize, false, false, false); // todo: dangerous to hard-code stereo output
+		auto& theBuffer = bufferSize == mySamplesPerBlock ? myBuffer : myBufferSecondary;
+
 		if (inputCHOP) {
 
 			//myBuffer->setDataToReferTo((float**)inputCHOP->channelData, 2, bufferSize);  // todo: dangerous to hard-code stereo input
 			for (int chan = 0; chan < 2; chan++)
 			{
-				myBuffer.copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
+				theBuffer.copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
 			}
 		}
 
-		myPlugin->processBlock(myBuffer, myRenderMidiBuffer);
+		myPlugin->processBlock(theBuffer, myRenderMidiBuffer);
 
 		// increment the position
-		myCurrentPositionInfo.timeInSamples += myBuffer.getNumSamples();
+		myCurrentPositionInfo.timeInSamples += theBuffer.getNumSamples();
 		myCurrentPositionInfo.ppqPosition = (myCurrentPositionInfo.timeInSamples / (mySampleRate * 60.)) * myCurrentPositionInfo.bpm;
 
 		for (int chan = 0; chan < output->numChannels; chan++) {
-			auto chanPtr = myBuffer.getReadPointer(chan);
+			auto chanPtr = theBuffer.getReadPointer(chan);
 			for (int samp = (int) i * mySamplesPerBlock; samp < std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples); samp++)
 			{
 				output->channels[chan][samp] = *chanPtr++;
@@ -634,8 +637,8 @@ TDVST::transportRewind() {}
 
 void TDVST::shutdownPlugin() {
 	if (myPlugin) {
-		myPlugin->releaseResources();
 		myPlugin->setPlayHead(nullptr);
+		myPlugin->releaseResources();
 		myPlugin = nullptr;
 	}
 }

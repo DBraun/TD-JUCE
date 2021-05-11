@@ -15,21 +15,6 @@
 
 #include "CHOP_CPlusPlusBase.h"
 
-/*
-
-This example file implements a class that does 2 different things depending on
-if a CHOP is connected to the CPlusPlus CHOPs input or not.
-The example is timesliced, which is the more complex way of working.
-
-If an input is connected the node will output the same number of channels as the
-input and divide the first 'N' samples in the input channel by 2. 'N' being the current
-timeslice size. This is noteworthy because if the input isn't changing then the output
-will look wierd since depending on the timeslice size some number of the first samples
-of the input will get used.
-
-If no input is connected then the node will output a smooth sine wave at 120hz.
-*/
-
 #include "JuceHeader.h"
 
 #include <unordered_map> 
@@ -92,7 +77,10 @@ private:
 
 	std::unique_ptr<juce::AudioPluginInstance, std::default_delete<juce::AudioPluginInstance>> myPlugin;
 
-	juce::AudioSampleBuffer myBuffer;
+	// myBuffer always has the block size number of samples
+	juce::AudioSampleBuffer myBuffer; 
+	// myBufferSecondary has the "leftover" number of samples after myBuffer is used repeatedly.
+	juce::AudioSampleBuffer myBufferSecondary;  
 
 	double myCookRate = 0;
 
