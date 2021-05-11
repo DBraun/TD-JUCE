@@ -92,7 +92,7 @@ private:
 
 	std::unique_ptr<juce::AudioPluginInstance, std::default_delete<juce::AudioPluginInstance>> myPlugin;
 
-	juce::AudioSampleBuffer* myBuffer;
+	juce::AudioSampleBuffer myBuffer;
 
 	double myCookRate = 0;
 
@@ -108,6 +108,8 @@ private:
 	CurrentPositionInfo myCurrentPositionInfo;
 
 	void updatePosInfo(const OP_TimeInfo* timeInfo);
+
+	void shutdownPlugin();
 
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(TDVST)
 };

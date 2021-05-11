@@ -78,7 +78,7 @@ TDVST::TDVST(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
 {
 	myExecuteCount = 0;
 
-	myBuffer = new juce::AudioBuffer<float>(2, 2048);  // 2 for stereo
+	myBuffer.setSize(2, 2048);
 
 	for (size_t i = 0; i < 128; i++)
 	{
@@ -103,17 +103,7 @@ TDVST::TDVST(const OP_NodeInfo* info) : myNodeInfo(info), mySampleRate(0.)
 
 TDVST::~TDVST()
 {
-	if (myPlugin)
-	{
-		myPlugin->releaseResources();
-		myPlugin.release();
-		myPlugin = nullptr;
-	}
-
-	if (myBuffer) {
-		delete myBuffer;
-		myBuffer = nullptr;
-	}
+	shutdownPlugin();
 }
 
 void
@@ -298,11 +288,7 @@ TDVST::checkPlugin(const char* pluginFilepath) {
 
 		String errorMessage;
 
-		if (myPlugin)
-		{
-			myPlugin->releaseResources();
-			myPlugin.release();
-		}
+		shutdownPlugin();
 
 		myPlugin = pluginFormatManager.createPluginInstance(*pluginDescriptions[0],
 			mySampleRate,
@@ -401,24 +387,24 @@ TDVST::execute(CHOP_Output* output,
 
 		int bufferSize = std::min(mySamplesPerBlock, (int)(output->numSamples - (i * mySamplesPerBlock)));
 		myPlugin->prepareToPlay(mySampleRate, bufferSize);
-		myBuffer->setSize(2, bufferSize, false, false, false); // todo: dangerous to hard-code stereo output
+		myBuffer.setSize(2, bufferSize, false, false, false); // todo: dangerous to hard-code stereo output
 		if (inputCHOP) {
 
 			//myBuffer->setDataToReferTo((float**)inputCHOP->channelData, 2, bufferSize);  // todo: dangerous to hard-code stereo input
 			for (int chan = 0; chan < 2; chan++)
 			{
-				myBuffer->copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
+				myBuffer.copyFrom(chan, 0, (const float*)(inputCHOP->getChannelData(std::min((int)chan, inputCHOP->numChannels)) + (i*mySamplesPerBlock)), bufferSize);
 			}
 		}
 
-		myPlugin->processBlock(*myBuffer, myRenderMidiBuffer);
+		myPlugin->processBlock(myBuffer, myRenderMidiBuffer);
 
 		// increment the position
-		myCurrentPositionInfo.timeInSamples += myBuffer->getNumSamples();
+		myCurrentPositionInfo.timeInSamples += myBuffer.getNumSamples();
 		myCurrentPositionInfo.ppqPosition = (myCurrentPositionInfo.timeInSamples / (mySampleRate * 60.)) * myCurrentPositionInfo.bpm;
 
 		for (int chan = 0; chan < output->numChannels; chan++) {
-			auto chanPtr = myBuffer->getReadPointer(chan);
+			auto chanPtr = myBuffer.getReadPointer(chan);
 			for (int samp = (int) i * mySamplesPerBlock; samp < std::min(((int)i + 1) * mySamplesPerBlock, (int)output->numSamples); samp++)
 			{
 				output->channels[chan][samp] = *chanPtr++;
@@ -645,3 +631,11 @@ TDVST::transportRecord(bool shouldStartRecording) { }
 /** Rewinds the audio. */
 void
 TDVST::transportRewind() {}
+
+void TDVST::shutdownPlugin() {
+	if (myPlugin) {
+		myPlugin->releaseResources();
+		myPlugin->setPlayHead(nullptr);
+		myPlugin = nullptr;
+	}
+}
